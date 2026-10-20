@@ -7,3 +7,7 @@
   - 1:1 mint/burn of stACC against locked underlying tokens
   - Exchange rate progression and lock-epoch-based redemption
   - CHANGELOG.md entry added
+
+## Issue #707: test refund-vault effective_fee_bps, reg_vdf_policy, nft_owner
+
+- [x] Add tests for `effective_fee_bps`, `reg_vdf_policy`, and `nft_owner` in `contracts/refund-vault/src/tier_tests.rs`
