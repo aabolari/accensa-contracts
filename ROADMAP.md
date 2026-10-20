@@ -19,3 +19,7 @@
 ## Issue #705: test refund-vault set_active, set_recipient, recall_principal
 
 - [x] Add tests for `set_active`, `set_recipient`, and `recall_principal` in `contracts/refund-vault/src/reentrancy_tests.rs`
+
+## Issue #704: test refund-vault median_price, evaluate_policy, is_approved
+
+- [x] Add tests for `median_price`, `evaluate_policy`, and `is_approved` in `contracts/refund-vault/src/oracle_tests.rs`
