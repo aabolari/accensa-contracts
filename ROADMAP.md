@@ -25,9 +25,8 @@
   - Exchange rate progression and lock-epoch-based redemption
   - CHANGELOG.md entry added
 
-## Issue #707: test refund-vault effective_fee_bps, reg_vdf_policy, nft_owner
+## Documentation: rustdoc field docs for contracttype/event payloads
 
-- [x] Add tests for `effective_fee_bps`, `reg_vdf_policy`, and `nft_owner` in `contracts/refund-vault/src/tier_tests.rs`
 - [x] Document the publicly exported fields of `RefundParam` in refund-vault (#784)
 - [x] Document the publicly exported fields of `YieldInfo` in refund-vault (#785)
 - [x] Document the publicly exported fields of `CouponAppliedEvent` in refund-vault (#783)

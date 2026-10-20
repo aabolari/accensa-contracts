@@ -11,9 +11,9 @@ use soroban_sdk::{
     Address, BytesN, Env,
 };
 
+use crate::nft_escrow::nft_owner;
 use crate::test_helpers::{reg_vdf_policy, vault_init};
 use crate::tiers::{effective_fee_bps, MerchantTier, MerchantTierState, MAX_TIERS};
-use crate::nft_escrow::nft_owner;
 use crate::{RefundVault, RefundVaultClient};
 use refund_policy_vdf::VdfPolicyClient;
 
@@ -305,7 +305,8 @@ fn effective_fee_bps_returns_flat_fee_when_no_ladder() {
 #[test]
 fn effective_fee_bps_returns_tier_fee_when_ladder_active() {
     let ctx = setup(500);
-    ctx.client.set_tier_ladder(&ladder(&ctx, &[(0, 200), (100_000, 50)]));
+    ctx.client
+        .set_tier_ladder(&ladder(&ctx, &[(0, 200), (100_000, 50)]));
 
     let fee = effective_fee_bps(&ctx.env);
     assert_eq!(fee, 200);
@@ -341,7 +342,9 @@ fn nft_owner_returns_correct_owner() {
 
 mod nft_owner_tests {
     use super::*;
-    use soroban_sdk::{contract, contractimpl, contracttype, testutils::Address as _, Address, Env};
+    use soroban_sdk::{
+        contract, contractimpl, contracttype, testutils::Address as _, Address, Env,
+    };
 
     #[contract]
     struct MockNft;
