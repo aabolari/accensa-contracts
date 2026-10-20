@@ -24,6 +24,7 @@ contractmeta!(
     val = r#"{"repository":"https://github.com/accensa/accensa-contracts","description":"Policy-bounded merchant refund vault for x402 on Stellar"}"#
 );
 
+/// Parameters for a single refund item processed in a batch via [`RefundVault::process_batch`].
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RefundParam {
@@ -52,6 +53,7 @@ pub struct RefundParam {
 // contract-spec text is embedded in the wasm, which is capped at Stellar's
 // 128 KiB contract-code limit. The live layout is documented in
 // `docs/storage-audit.md`.
+/// Storage keys for the vault's instance, temporary, and persistent state.
 #[contracttype(export = false)]
 pub enum DataKey {
     Admin,
@@ -187,6 +189,7 @@ pub enum DataKey {
     TierState,
 }
 
+/// Persistent record tracking cumulative refund history and metadata for a payment reference.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RefundRecord {
@@ -256,6 +259,7 @@ pub struct RefundClaim {
     pub vdf_proof: Option<BytesN<256>>,
 }
 
+/// Snapshot of the vault's yield strategy configuration and deployment metrics.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct YieldInfo {
@@ -340,6 +344,7 @@ pub struct FeeConfigUpdatedEvent {
     pub fee_recipient: Address,
 }
 
+/// Emitted when funds are deposited into the vault float via [`RefundVault::deposit`].
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DepositEvent {
@@ -372,6 +377,7 @@ pub struct UnpauseEvent {
     pub ledger: u32,
 }
 
+/// Emitted when funds are withdrawn from the vault float via [`RefundVault::withdraw`].
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WithdrawEvent {
@@ -382,6 +388,7 @@ pub struct WithdrawEvent {
     pub nonce: u64,
 }
 
+/// Emitted when the admin initiates a two-step admin transfer via [`RefundVault::transfer_admin`].
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdminTransferInitiatedEvent {
@@ -391,6 +398,7 @@ pub struct AdminTransferInitiatedEvent {
     pub to: Address,
 }
 
+/// Emitted when the pending admin accepts the role transfer via [`RefundVault::accept_admin`].
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdminTransferAcceptedEvent {

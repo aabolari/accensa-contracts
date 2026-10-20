@@ -8,11 +8,23 @@ exception: while the project is below `1.0.0`, breaking changes bump the
 **minor** version, and they are called out as such.
 
 ## [Unreleased]
+### Changed
+- Remove two no-op modules from the `accensa-common` public API.
 - fix(refund-vault,refund-policy-vdf): guard four amount paths with checked math (closes #716, #717, #718, #719) (#896).
+- docs: rustdoc for 8 public items in refund-vault/lib (#739) (#878).
 - feat: resolve #550, #480, #479, and #478 (#866).
 - docs(factory): rustdoc for 7 public items in refund-vault-factory/lib… (#880).
 - **Documentation (#776):** Documented all 5 public fields of receipt-anchor's `PrunePayload` (`schema_version`, `timestamp`, `shard_id`, `start_batch_id`, `end_batch_id`) in `contracts/receipt-anchor/src/events.rs`, each with a `///` line stating its domain and the `prune_batches` call site that writes it, so an off-chain decoder can read the published `prune` payload without reading the contract source; doc comments only, no field, type, order or derive change.
 - docs: Add /// to BatchRecord's exported fields (#777) (#901).
+- **`governance` (issue #743): rustdoc for `liquid_staking.rs`'s 6 undocumented
+  public items.** `contracts/governance/src/liquid_staking.rs` now documents
+  `LiquidStakingError`, the `Mint` and `Burn` events (each field's role),
+  `ExchangeRate`, `UserData` and the `LiquidStaking` contract struct. Doc
+  comments only — no signature, body, ordering or test change, and
+  `missing_docs` is deliberately not enabled.
+- Issue #572: Removed the uncompiled, unreferenced source files `contracts/governance/src/liquid_staking_impl.rs`, `contracts/refund-vault/src/guard.rs`, and `contracts/refund-vault/src/test/test/refund_vectors.rs`. No compiled contract behavior changed.
+  
+### Removed
 - **`stream-vault` (issue #603): add Tier A budget assertions for claim, cancel, create, and pause/resume.**
   Adds `budget_test` module with Tier A budget ceilings covering stream creation, partial and full claims, pause/resume cycles, and cancellations. Test-only — no contract behavior change.
 - **`treasury` (issue #606): assert buyback and fee-liquidation events and their config key.**
@@ -27,8 +39,14 @@ exception: while the project is below `1.0.0`, breaking changes bump the
   zero-delay no-gate path is gated separately and much tighter. Test-only —
   the modulus, `MR_BASES`, delay types and contract behaviour are unchanged.
 - **Internal tests (#655, #657):** Pinned the treasury vesting event shapes and the reputation SBT authority gate on `issue`, `revoke` and `slash`.
+- docs(governance): document the 4 public items in lib.rs (closes #746) (#850).
 - **Documentation (#756, #757, #761, #762):** Documented granular event payload fields and refund-vault APIs.
 
+- **`multisig-account` (issue #413): daily spending limits for sub-threshold
+  signers.** Governance can configure a per-token daily allowance for routine
+  transfers authorized by fewer than the full threshold. Spending is tracked
+  per signer and token in 24-hour ledger-time windows; other calls and spends
+  beyond the remaining allowance still require the full threshold.
 - **`multisig-account` / `refund-vault` (issues #592, #593): pin verify_ed25519 trap semantics and refund-vault config getters.**
   Added unit test coverage for `verify_ed25519` in `contracts/multisig-account/src/test.rs`, asserting that valid signatures return normally, malleated non-canonical `s` scalar signatures return typed `Error::NonCanonicalSignature`, and invalid signatures trap the host VM (`Err(Err(_))`). Extended `contracts/refund-vault/src/test.rs` to exercise unexercised config getters (`get_admin`, `get_token`, `get_refund_window`, and `is_paused`), verifying configured values, pause/unpause boolean transitions, and `Error::NotInitialized` when called on an uninitialized instance. Test-only — no contract behavior changes.
 
@@ -39,6 +57,12 @@ exception: while the project is below `1.0.0`, breaking changes bump the
   so an off-chain decoder can read the event without inferring either from the
   field name. Doc comments only — struct layout, field types and the topic
   tuple are unchanged.
+- **`cross-chain` (issue #643): cover non-admin auth rejection for admin setters.**
+  Extended `contracts/cross-chain/src/test.rs` with negative-path tests
+  asserting that `set_guardian_set`, `set_axelar_gateway`, `set_trusted_peer`
+  and `set_layerzero_endpoint` reject non-admin callers before any storage
+  write, plus admin happy-path tests pinning the expected stored values.
+  Test-only — no contract behavior change.
 - **`oracle` (issue #652): pin the admin getter and the round staleness bound.** New
   `staleness_test` module in `contracts/oracle/src/staleness_test.rs`, registered
   with a single `mod staleness_test;` line, asserting `get_admin` returns `None`
@@ -73,6 +97,7 @@ exception: while the project is below `1.0.0`, breaking changes bump the
   `DEFAULT_TTL_BUMP`, and a rejected `NothingToClaim` claim leaves the TTL no
   shorter. Policy constants come from `accensa_common::storage`; no contract
   code change.
+- chore(accensa-common): drop two no-op modules from the public API (#571) (#852).
 - **`receipt-shard` / `upto-authorization` (issues #781, #793): rustdoc for
   the undocumented public fields of `BatchRecord` and `AuthorizationRecord`.**
   Each of the 5 fields of `BatchRecord` in `contracts/receipt-shard/src/lib.rs`
