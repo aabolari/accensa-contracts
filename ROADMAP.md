@@ -24,3 +24,7 @@
 ## Issue #707: test refund-vault effective_fee_bps, reg_vdf_policy, nft_owner
 
 - [x] Add tests for `effective_fee_bps`, `reg_vdf_policy`, and `nft_owner` in `contracts/refund-vault/src/tier_tests.rs`
+
+## Issue #706: test refund-vault resolve_ceiling, split_amount, reg_time_policy
+
+- [x] Add tests for `resolve_ceiling`, `split_amount`, and `reg_time_policy` in `contracts/refund-vault/src/settlement_test.rs`
