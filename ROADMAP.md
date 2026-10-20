@@ -15,3 +15,7 @@
 ## Issue #706: test refund-vault resolve_ceiling, split_amount, reg_time_policy
 
 - [x] Add tests for `resolve_ceiling`, `split_amount`, and `reg_time_policy` in `contracts/refund-vault/src/settlement_test.rs`
+
+## Issue #705: test refund-vault set_active, set_recipient, recall_principal
+
+- [x] Add tests for `set_active`, `set_recipient`, and `recall_principal` in `contracts/refund-vault/src/reentrancy_tests.rs`
