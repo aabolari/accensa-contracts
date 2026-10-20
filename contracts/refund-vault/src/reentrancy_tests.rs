@@ -49,13 +49,15 @@
 //! suite, so `require_auth` is never the reason a reentrant call fails.
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, testutils::Address as _, token::{StellarAssetClient, TokenClient}, Address,
-    BytesN, Env, Vec,
+    contract, contractimpl, contracttype,
+    testutils::{Address as _, Events},
+    token::{StellarAssetClient, TokenClient},
+    Address, BytesN, Env,
 };
 
+use crate::strategy::{is_approved, recall_principal, set_active, set_recipient};
 use crate::test_helpers::vault_init;
-use crate::strategy::{active_strategy, approve, deployed_principal, is_approved, recall_principal, set_active, set_recipient};
-use crate::yield_tests::{MockYieldStrategy, MockYieldStrategyClient, StrategyDataKey};
+use crate::yield_tests::{MockYieldStrategy, MockYieldStrategyClient};
 use crate::{Error, RefundVault, RefundVaultClient};
 
 const FLOAT: i128 = 1_000_000;
@@ -946,13 +948,13 @@ fn test_set_active_succeeds_with_approved_strategy() {
     let result = set_active(&env, strategy_id.clone());
     assert!(result.is_ok());
 
-    // Verify it's the active strategy
-    assert_eq!(active_strategy(&env), Some(strategy_id));
+    // Verify it's the active strategy using public query
+    assert_eq!(client.get_yield_info().strategy, Some(strategy_id));
 }
 
 #[test]
 fn test_set_active_rejects_unapproved_strategy() {
-    let (env, _client, _merchant, _vault_id, token) = setup_strategy_vault();
+    let (env, client, _merchant, _vault_id, token) = setup_strategy_vault();
 
     let strategy_id = env.register(MockYieldStrategy, ());
     let strategy_client = MockYieldStrategyClient::new(&env, &strategy_id);
@@ -962,7 +964,7 @@ fn test_set_active_rejects_unapproved_strategy() {
     let result = set_active(&env, strategy_id.clone());
 
     assert_eq!(result, Err(Error::StrategyNotApproved));
-    assert_eq!(active_strategy(&env), None);
+    assert_eq!(client.get_yield_info().strategy, None);
 }
 
 #[test]
@@ -978,7 +980,7 @@ fn test_set_active_rejects_when_current_strategy_has_principal() {
     client.set_reserve_ratio(&0);
     client.set_max_deploy_ratio(&10_000);
     client.deploy_to_yield(&1_000_000);
-    assert_eq!(deployed_principal(&env), 1_000_000);
+    assert_eq!(client.get_yield_info().deployed_principal, 1_000_000);
 
     // Second strategy, approved but different from current
     let strategy2 = env.register(MockYieldStrategy, ());
@@ -990,7 +992,7 @@ fn test_set_active_rejects_when_current_strategy_has_principal() {
     let result = set_active(&env, strategy2.clone());
 
     assert_eq!(result, Err(Error::StrategyHasPrincipal));
-    assert_eq!(active_strategy(&env), Some(strategy1));
+    assert_eq!(client.get_yield_info().strategy, Some(strategy1));
 }
 
 #[test]
@@ -1005,13 +1007,13 @@ fn test_set_active_allows_same_strategy_even_with_principal() {
     client.set_reserve_ratio(&0);
     client.set_max_deploy_ratio(&10_000);
     client.deploy_to_yield(&1_000_000);
-    assert_eq!(deployed_principal(&env), 1_000_000);
+    assert_eq!(client.get_yield_info().deployed_principal, 1_000_000);
 
     // Set the same strategy again - should succeed (idempotent)
     let result = set_active(&env, strategy.clone());
 
     assert!(result.is_ok());
-    assert_eq!(active_strategy(&env), Some(strategy));
+    assert_eq!(client.get_yield_info().strategy, Some(strategy));
 }
 
 #[test]
@@ -1049,25 +1051,23 @@ fn test_recall_principal_succeeds_and_emits_event() {
     client.deploy_to_yield(&1_000_000);
 
     // Fund the strategy so it can return tokens
-    let sac = env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let _sac = env.register_stellar_asset_contract_v2(Address::generate(&env));
     StellarAssetClient::new(&env, &token).mint(&strategy_id, &2_000_000);
 
     // Recall some principal
-    let (principal_returned, yield_returned) = recall_principal(&env, &strategy_id, 500_000).unwrap();
+    let (principal_returned, yield_returned) =
+        recall_principal(&env, &strategy_id, 500_000).unwrap();
 
     assert_eq!(principal_returned, 500_000);
     assert_eq!(yield_returned, 0);
 
-    // Verify deployed principal decreased
-    assert_eq!(deployed_principal(&env), 500_000);
+    // Verify deployed principal decreased using public query
+    assert_eq!(client.get_yield_info().deployed_principal, 500_000);
 
     // Verify event was emitted
-    let events = env.events().all().filter_by_contract(&client.address).events();
-    let has_withdrawn = events.iter().any(|e| {
-        let topics: Vec<soroban_sdk::Val> = e.topics.clone();
-        topics.get(0).map(|t| t == soroban_sdk::Val::from(soroban_sdk::Symbol::new(&env, "yield_withdrawn"))).unwrap_or(false)
-    });
-    assert!(has_withdrawn, "YieldWithdrawnEvent must be published");
+    let filtered = env.events().all().filter_by_contract(&client.address);
+    let events = filtered.events();
+    assert_eq!(events.len(), 1, "YieldWithdrawnEvent must be published");
 }
 
 #[test]
