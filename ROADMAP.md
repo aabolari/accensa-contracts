@@ -25,9 +25,8 @@
   - Exchange rate progression and lock-epoch-based redemption
   - CHANGELOG.md entry added
 
-## Issue #707: test refund-vault effective_fee_bps, reg_vdf_policy, nft_owner
+## Documentation: rustdoc field docs for contracttype/event payloads
 
-- [x] Add tests for `effective_fee_bps`, `reg_vdf_policy`, and `nft_owner` in `contracts/refund-vault/src/tier_tests.rs`
 - [x] Document the publicly exported fields of `RefundParam` in refund-vault (#784)
 - [x] Document the publicly exported fields of `YieldInfo` in refund-vault (#785)
 - [x] Document the publicly exported fields of `CouponAppliedEvent` in refund-vault (#783)
@@ -36,13 +35,12 @@
 - [x] Document the publicly exported fields of `OptimisticQueuedEvent` in governance (#775)
 ## Issue #660: PR template verification step runs the full workspace suite
 
-## Issue #706: test refund-vault resolve_ceiling, split_amount, reg_time_policy
+- [x] Point the PR template's Verification checkbox at `cargo test --workspace` (#660)
 
-- [x] Add tests for `resolve_ceiling`, `split_amount`, and `reg_time_policy` in `contracts/refund-vault/src/settlement_test.rs`
+## Issue #658: CHANGELOG's pre-1.0 versioning policy matches RELEASING.md
 
-## Issue #705: test refund-vault set_active, set_recipient, recall_principal
+- [x] State the pre-1.0 minor-for-breaking rule once in `docs/RELEASING.md` and cite it from `CHANGELOG.md` (#658)
 
-- [x] Add tests for `set_active`, `set_recipient`, and `recall_principal` in `contracts/refund-vault/src/reentrancy_tests.rs`
 ## Issue #670: iterate members in the governance constructor
 
 - [x] `Governance::__constructor` iterates `members`/`deposits` instead of `get(i).unwrap()` (#670)

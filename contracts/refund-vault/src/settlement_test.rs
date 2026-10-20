@@ -217,8 +217,14 @@ fn resolve_ceiling_returns_existing_record_values_when_record_exists() {
     // Now resolve_ceiling should return the existing record's values
     let (previous, ceiling) = resolve_ceiling(&ctx.env, &pref, 20_000, 200_000).unwrap();
 
-    assert_eq!(previous, 30_000, "should return the already-refunded amount");
-    assert_eq!(ceiling, 100_000, "ceiling should be fixed by the first partial");
+    assert_eq!(
+        previous, 30_000,
+        "should return the already-refunded amount"
+    );
+    assert_eq!(
+        ceiling, 100_000,
+        "ceiling should be fixed by the first partial"
+    );
 }
 
 #[test]
