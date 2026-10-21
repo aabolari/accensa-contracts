@@ -9,6 +9,8 @@ exception: while the project is below `1.0.0`, breaking changes bump the
 
 ## [Unreleased]
 - Feat/set active (#918).
+- Feat/resolve ceiling (#917).
+- Feat/refund vault (#916).
 - **`governance` (issue #476): per-bounty community donations with quadratic
   treasury matching.** New `qf` module (`contracts/governance/src/qf.rs`).
   `qf_open_bounty` / `qf_complete_bounty` are gated like `set_treasury_token`
