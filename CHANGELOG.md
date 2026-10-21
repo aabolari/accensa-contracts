@@ -9,6 +9,21 @@ exception: while the project is below `1.0.0`, breaking changes bump the
 
 ## [Unreleased]
 - Feat/median price (#920).
+- **`governance` (issue #476): per-bounty community donations with quadratic
+  treasury matching.** New `qf` module (`contracts/governance/src/qf.rs`).
+  `qf_open_bounty` / `qf_complete_bounty` are gated like `set_treasury_token`
+  (contract-address auth, reachable only through an approved proposal), so
+  bounty creation and the payout require existing governance approval.
+  `qf_donate` custodies the configured `TreasuryToken` and tracks each
+  donor's cumulative contribution per `u64` bounty id; the match is the
+  quadratic-funding formula `(Σ⌊√(cᵢ·10¹⁴)⌋)²/10¹⁴ − Σcᵢ` in deterministic
+  fixed-point integer arithmetic (floored at every step, clamped at zero),
+  with the per-bounty square-root sum maintained incrementally so completion
+  is O(1). `qf_complete_bounty` pays donations plus match to the recorded
+  recipient exactly once, charges only the match to the treasury, and fails
+  closed with `InsufficientTreasury` when the balance cannot cover it.
+  Voting weights, vote counting and quorum behaviour are unchanged; errors
+  are a module-local `QfError` so the shared `Error` spec does not grow.
 ### Changed
 - Remove two no-op modules from the `accensa-common` public API.
 - fix(refund-vault,refund-policy-vdf): guard four amount paths with checked math (closes #716, #717, #718, #719) (#896).
@@ -17,6 +32,7 @@ exception: while the project is below `1.0.0`, breaking changes bump the
 - docs(factory): rustdoc for 7 public items in refund-vault-factory/lib… (#880).
 - **Documentation (#776):** Documented all 5 public fields of receipt-anchor's `PrunePayload` (`schema_version`, `timestamp`, `shard_id`, `start_batch_id`, `end_batch_id`) in `contracts/receipt-anchor/src/events.rs`, each with a `///` line stating its domain and the `prune_batches` call site that writes it, so an off-chain decoder can read the published `prune` payload without reading the contract source; doc comments only, no field, type, order or derive change.
 - docs: Add /// to BatchRecord's exported fields (#777) (#901).
+- **Documentation (#773):** Documented the 5 public fields of cross-chain's `ParsedVaa` (`version`, `guardian_set_index`, `signatures`, `body`, `body_bytes`) in `contracts/cross-chain/src/wormhole.rs`, each with a `///` line stating its domain and the `parse_vaa`/`verify_vaa` call site that writes or reads it, so an off-chain decoder can interpret the value without reading the contract source; doc comments only, no field, type, order or derive change.
 - **`governance` (issue #743): rustdoc for `liquid_staking.rs`'s 6 undocumented
   public items.** `contracts/governance/src/liquid_staking.rs` now documents
   `LiquidStakingError`, the `Mint` and `Burn` events (each field's role),
