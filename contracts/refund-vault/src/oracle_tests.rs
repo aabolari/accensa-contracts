@@ -929,7 +929,7 @@ mod evaluate_policy_tests {
         let result = env
             .as_contract(&vault_client.address, || evaluate_policy(&env, &policy))
             .unwrap();
-        assert_eq!(result, true, "median 200 < 250 should be true");
+        assert!(result, "median 200 < 250 should be true");
     }
 
     #[test]
@@ -951,7 +951,7 @@ mod evaluate_policy_tests {
         let result = env
             .as_contract(&vault_client.address, || evaluate_policy(&env, &policy))
             .unwrap();
-        assert_eq!(result, false, "median 300 !< 250 should be false");
+        assert!(!result, "median 300 !< 250 should be false");
     }
 
     #[test]
@@ -973,7 +973,7 @@ mod evaluate_policy_tests {
         let result = env
             .as_contract(&vault_client.address, || evaluate_policy(&env, &policy))
             .unwrap();
-        assert_eq!(result, true, "median 300 > 250 should be true");
+        assert!(result, "median 300 > 250 should be true");
     }
 
     #[test]
@@ -995,7 +995,7 @@ mod evaluate_policy_tests {
         let result = env
             .as_contract(&vault_client.address, || evaluate_policy(&env, &policy))
             .unwrap();
-        assert_eq!(result, false, "median 200 !> 250 should be false");
+        assert!(!result, "median 200 !> 250 should be false");
     }
 
     #[test]
@@ -1018,7 +1018,7 @@ mod evaluate_policy_tests {
                 evaluate_policy(&env, &policy_below)
             })
             .unwrap();
-        assert_eq!(result, false, "250 is not < 250");
+        assert!(!result, "250 is not < 250");
 
         let policy_above = OraclePolicy {
             feed_id,
@@ -1031,7 +1031,7 @@ mod evaluate_policy_tests {
                 evaluate_policy(&env, &policy_above)
             })
             .unwrap();
-        assert_eq!(result, false, "250 is not > 250");
+        assert!(!result, "250 is not > 250");
     }
 }
 
@@ -1047,7 +1047,7 @@ mod is_approved_tests {
         let result = env.as_contract(&vault_client.address, || {
             is_approved(&env, &unknown_strategy)
         });
-        assert_eq!(result, false);
+        assert!(!result);
     }
 
     #[test]
@@ -1056,17 +1056,14 @@ mod is_approved_tests {
         let strategy = Address::generate(&env);
 
         // Initially not approved
-        assert_eq!(
-            env.as_contract(&vault_client.address, || is_approved(&env, &strategy)),
-            false
-        );
+        assert!(!env.as_contract(&vault_client.address, || is_approved(&env, &strategy)));
 
         // Approve the strategy
         vault_client.approve_yield_strategy(&strategy);
 
         // Now it should be approved
         let result = env.as_contract(&vault_client.address, || is_approved(&env, &strategy));
-        assert_eq!(result, true);
+        assert!(result);
     }
 
     #[test]
@@ -1075,14 +1072,11 @@ mod is_approved_tests {
         let strategy = Address::generate(&env);
 
         vault_client.approve_yield_strategy(&strategy);
-        assert_eq!(
-            env.as_contract(&vault_client.address, || is_approved(&env, &strategy)),
-            true
-        );
+        assert!(env.as_contract(&vault_client.address, || is_approved(&env, &strategy)));
 
         vault_client.revoke_yield_strategy(&strategy);
 
         let result = env.as_contract(&vault_client.address, || is_approved(&env, &strategy));
-        assert_eq!(result, false);
+        assert!(!result);
     }
 }
