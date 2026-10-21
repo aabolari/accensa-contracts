@@ -15,7 +15,6 @@ use soroban_sdk::{
 use crate::settlement::{resolve_ceiling, split_amount, RefundSettlement};
 use crate::test_helpers::{reg_time_policy, vault_init};
 use crate::{RefundVault, RefundVaultClient};
-use refund_policy_time::TimePolicyClient;
 
 const FLOAT: i128 = 1_000_000;
 
@@ -198,7 +197,12 @@ fn resolve_ceiling_returns_zero_previous_and_payment_amount_when_no_record() {
     let ctx = setup(0);
     let pref = payment_ref(&ctx, 10);
 
-    let (previous, ceiling) = resolve_ceiling(&ctx.env, &pref, 50_000, 100_000).unwrap();
+    let (previous, ceiling) = ctx
+        .env
+        .as_contract(&ctx.client.address, || {
+            resolve_ceiling(&ctx.env, &pref, 50_000, 100_000)
+        })
+        .unwrap();
 
     assert_eq!(previous, 0);
     assert_eq!(ceiling, 100_000);
@@ -215,10 +219,21 @@ fn resolve_ceiling_returns_existing_record_values_when_record_exists() {
         .refund(&pref, &buyer, &30_000, &0, &100_000, &None, &0);
 
     // Now resolve_ceiling should return the existing record's values
-    let (previous, ceiling) = resolve_ceiling(&ctx.env, &pref, 20_000, 200_000).unwrap();
+    let (previous, ceiling) = ctx
+        .env
+        .as_contract(&ctx.client.address, || {
+            resolve_ceiling(&ctx.env, &pref, 20_000, 200_000)
+        })
+        .unwrap();
 
-    assert_eq!(previous, 30_000, "should return the already-refunded amount");
-    assert_eq!(ceiling, 100_000, "ceiling should be fixed by the first partial");
+    assert_eq!(
+        previous, 30_000,
+        "should return the already-refunded amount"
+    );
+    assert_eq!(
+        ceiling, 100_000,
+        "ceiling should be fixed by the first partial"
+    );
 }
 
 #[test]
@@ -227,7 +242,9 @@ fn resolve_ceiling_rejects_overflow() {
     let pref = payment_ref(&ctx, 12);
 
     // amount so large that previous_refunded + amount overflows i128
-    let result = resolve_ceiling(&ctx.env, &pref, i128::MAX, 100_000);
+    let result = ctx.env.as_contract(&ctx.client.address, || {
+        resolve_ceiling(&ctx.env, &pref, i128::MAX, 100_000)
+    });
 
     assert_eq!(result, Err(accensa_common::Error::ExceedsPayment));
 }
@@ -238,7 +255,9 @@ fn resolve_ceiling_rejects_non_positive_ceiling() {
     let pref = payment_ref(&ctx, 13);
 
     // payment_amount <= 0 should be rejected
-    let result = resolve_ceiling(&ctx.env, &pref, 10_000, 0);
+    let result = ctx.env.as_contract(&ctx.client.address, || {
+        resolve_ceiling(&ctx.env, &pref, 10_000, 0)
+    });
 
     assert_eq!(result, Err(accensa_common::Error::ExceedsPayment));
 }
@@ -254,7 +273,9 @@ fn resolve_ceiling_rejects_cumulative_exceeding_ceiling() {
         .refund(&pref, &buyer, &60_000, &0, &100_000, &None, &0);
 
     // Try to refund another 50_000 (would exceed ceiling of 100_000)
-    let result = resolve_ceiling(&ctx.env, &pref, 50_000, 100_000);
+    let result = ctx.env.as_contract(&ctx.client.address, || {
+        resolve_ceiling(&ctx.env, &pref, 50_000, 100_000)
+    });
 
     assert_eq!(result, Err(accensa_common::Error::ExceedsPayment));
 }
@@ -304,8 +325,7 @@ fn reg_time_policy_registers_a_valid_contract() {
     let time_address = reg_time_policy(&env);
 
     assert!(!time_address.to_string().is_empty());
-
-    let time_client = TimePolicyClient::new(&env, &time_address);
-    let window = time_client.get_window();
-    assert_eq!(window, 0);
+    // TimePolicy's only entry point is `evaluate`; a second registration must
+    // yield a distinct contract address.
+    assert_ne!(time_address, reg_time_policy(&env));
 }

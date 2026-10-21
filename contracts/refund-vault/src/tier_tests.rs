@@ -13,9 +13,7 @@ use soroban_sdk::{
 
 use crate::test_helpers::{reg_vdf_policy, vault_init};
 use crate::tiers::{effective_fee_bps, MerchantTier, MerchantTierState, MAX_TIERS};
-use crate::nft_escrow::nft_owner;
 use crate::{RefundVault, RefundVaultClient};
-use refund_policy_vdf::VdfPolicyClient;
 
 const FLOAT: i128 = 10_000_000;
 
@@ -298,16 +296,21 @@ fn ladder_changes_require_the_merchant() {
 fn effective_fee_bps_returns_flat_fee_when_no_ladder() {
     let ctx = setup(350);
 
-    let fee = effective_fee_bps(&ctx.env);
+    let fee = ctx
+        .env
+        .as_contract(&ctx.client.address, || effective_fee_bps(&ctx.env));
     assert_eq!(fee, 350);
 }
 
 #[test]
 fn effective_fee_bps_returns_tier_fee_when_ladder_active() {
     let ctx = setup(500);
-    ctx.client.set_tier_ladder(&ladder(&ctx, &[(0, 200), (100_000, 50)]));
+    ctx.client
+        .set_tier_ladder(&ladder(&ctx, &[(0, 200), (100_000, 50)]));
 
-    let fee = effective_fee_bps(&ctx.env);
+    let fee = ctx
+        .env
+        .as_contract(&ctx.client.address, || effective_fee_bps(&ctx.env));
     assert_eq!(fee, 200);
 }
 
@@ -318,30 +321,16 @@ fn reg_vdf_policy_registers_a_valid_contract() {
 
     assert!(!vdf_address.to_string().is_empty());
 
+    // A live VdfPolicy answers its entry points; an unknown dispute is a typed error.
     let vdf_client = refund_policy_vdf::VdfPolicyClient::new(&env, &vdf_address);
-    let delay = vdf_client.get_delay();
-    assert_eq!(delay, 0);
-}
-
-#[test]
-fn nft_owner_returns_correct_owner() {
-    let env = Env::default();
-    env.mock_all_auths();
-
-    let merchant = Address::generate(&env);
-    let nft_id = env.register(MockNft, ());
-    MockNftClient::new(&env, &nft_id).init(&merchant);
-
-    let token_id: u128 = 42;
-    MockNftClient::new(&env, &nft_id).mint(&merchant, &token_id);
-
-    let owner = nft_owner(&env, &nft_id, token_id);
-    assert_eq!(owner, merchant);
+    assert!(vdf_client.try_get_fallback_dispute(&0).is_err());
 }
 
 mod nft_owner_tests {
-    use super::*;
-    use soroban_sdk::{contract, contractimpl, contracttype, testutils::Address as _, Address, Env};
+    use crate::nft_escrow::nft_owner;
+    use soroban_sdk::{
+        contract, contractimpl, contracttype, testutils::Address as _, Address, Env,
+    };
 
     #[contract]
     struct MockNft;
@@ -398,6 +387,20 @@ mod nft_owner_tests {
                 .set(&NftKey::Owner(token_id), &to);
         }
     }
-}
 
-type MockNftClient<'a> = soroban_sdk::testutils::MockContractClient<'a, nft_owner_tests::MockNft>;
+    #[test]
+    fn nft_owner_returns_correct_owner() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let merchant = Address::generate(&env);
+        let nft_id = env.register(MockNft, ());
+        MockNftClient::new(&env, &nft_id).init(&merchant);
+
+        let token_id: u128 = 42;
+        MockNftClient::new(&env, &nft_id).mint(&merchant, &token_id);
+
+        let owner = nft_owner(&env, &nft_id, token_id);
+        assert_eq!(owner, merchant);
+    }
+}

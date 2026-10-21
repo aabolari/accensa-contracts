@@ -914,8 +914,6 @@ fn test_lock_is_released_after_successful_call() {
 // ═══════════════════════════════════════════════════════════════════════
 
 fn setup_strategy_vault() -> (Env, RefundVaultClient<'static>, Address, Address, Address) {
-    use soroban_sdk::token::StellarAssetClient;
-
     let env = Env::default();
     env.mock_all_auths();
 
@@ -934,7 +932,7 @@ fn setup_strategy_vault() -> (Env, RefundVaultClient<'static>, Address, Address,
 
 #[test]
 fn test_set_active_succeeds_with_approved_strategy() {
-    let (env, client, _merchant, _vault_id, token) = setup_strategy_vault();
+    let (env, client, _merchant, vault_id, token) = setup_strategy_vault();
 
     let strategy_id = env.register(MockYieldStrategy, ());
     let strategy_client = MockYieldStrategyClient::new(&env, &strategy_id);
@@ -942,10 +940,10 @@ fn test_set_active_succeeds_with_approved_strategy() {
 
     // Approve the strategy first
     client.approve_yield_strategy(&strategy_id);
-    assert!(is_approved(&env, &strategy_id));
+    assert!(env.as_contract(&vault_id, || is_approved(&env, &strategy_id)));
 
     // Now set it as active - should succeed
-    let result = set_active(&env, strategy_id.clone());
+    let result = env.as_contract(&vault_id, || set_active(&env, strategy_id.clone()));
     assert!(result.is_ok());
 
     // Verify it's the active strategy using public query
@@ -954,14 +952,14 @@ fn test_set_active_succeeds_with_approved_strategy() {
 
 #[test]
 fn test_set_active_rejects_unapproved_strategy() {
-    let (env, client, _merchant, _vault_id, token) = setup_strategy_vault();
+    let (env, client, _merchant, vault_id, token) = setup_strategy_vault();
 
     let strategy_id = env.register(MockYieldStrategy, ());
     let strategy_client = MockYieldStrategyClient::new(&env, &strategy_id);
     strategy_client.initialize(&token, &client.address);
 
     // Don't approve - try to set as active directly
-    let result = set_active(&env, strategy_id.clone());
+    let result = env.as_contract(&vault_id, || set_active(&env, strategy_id.clone()));
 
     assert_eq!(result, Err(Error::StrategyNotApproved));
     assert_eq!(client.get_yield_info().strategy, None);
@@ -969,7 +967,7 @@ fn test_set_active_rejects_unapproved_strategy() {
 
 #[test]
 fn test_set_active_rejects_when_current_strategy_has_principal() {
-    let (env, client, _merchant, _vault_id, token) = setup_strategy_vault();
+    let (env, client, _merchant, vault_id, token) = setup_strategy_vault();
 
     // First strategy with deployed principal
     let strategy1 = env.register(MockYieldStrategy, ());
@@ -989,7 +987,7 @@ fn test_set_active_rejects_when_current_strategy_has_principal() {
     client.approve_yield_strategy(&strategy2);
 
     // Try to switch to strategy2 while strategy1 still has principal
-    let result = set_active(&env, strategy2.clone());
+    let result = env.as_contract(&vault_id, || set_active(&env, strategy2.clone()));
 
     assert_eq!(result, Err(Error::StrategyHasPrincipal));
     assert_eq!(client.get_yield_info().strategy, Some(strategy1));
@@ -997,7 +995,7 @@ fn test_set_active_rejects_when_current_strategy_has_principal() {
 
 #[test]
 fn test_set_active_allows_same_strategy_even_with_principal() {
-    let (env, client, _merchant, _vault_id, token) = setup_strategy_vault();
+    let (env, client, _merchant, vault_id, token) = setup_strategy_vault();
 
     let strategy = env.register(MockYieldStrategy, ());
     let strategy_client = MockYieldStrategyClient::new(&env, &strategy);
@@ -1010,7 +1008,7 @@ fn test_set_active_allows_same_strategy_even_with_principal() {
     assert_eq!(client.get_yield_info().deployed_principal, 1_000_000);
 
     // Set the same strategy again - should succeed (idempotent)
-    let result = set_active(&env, strategy.clone());
+    let result = env.as_contract(&vault_id, || set_active(&env, strategy.clone()));
 
     assert!(result.is_ok());
     assert_eq!(client.get_yield_info().strategy, Some(strategy));
@@ -1018,27 +1016,27 @@ fn test_set_active_allows_same_strategy_even_with_principal() {
 
 #[test]
 fn test_set_recipient_succeeds_with_valid_address() {
-    let (env, _client, _merchant, _vault_id, _token) = setup_strategy_vault();
+    let (env, _client, _merchant, vault_id, _token) = setup_strategy_vault();
 
     let recipient = Address::generate(&env);
-    let result = set_recipient(&env, recipient.clone());
+    let result = env.as_contract(&vault_id, || set_recipient(&env, recipient.clone()));
 
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_set_recipient_rejects_self_transfer() {
-    let (env, client, _merchant, _vault_id, _token) = setup_strategy_vault();
+    let (env, client, _merchant, vault_id, _token) = setup_strategy_vault();
 
     // Try to set vault itself as recipient
-    let result = set_recipient(&env, client.address);
+    let result = env.as_contract(&vault_id, || set_recipient(&env, client.address));
 
     assert_eq!(result, Err(Error::SelfTransfer));
 }
 
 #[test]
 fn test_recall_principal_succeeds_and_emits_event() {
-    let (env, client, _merchant, _vault_id, token) = setup_strategy_vault();
+    let (env, client, _merchant, vault_id, token) = setup_strategy_vault();
 
     let strategy_id = env.register(MockYieldStrategy, ());
     let strategy_client = MockYieldStrategyClient::new(&env, &strategy_id);
@@ -1055,24 +1053,26 @@ fn test_recall_principal_succeeds_and_emits_event() {
     StellarAssetClient::new(&env, &token).mint(&strategy_id, &2_000_000);
 
     // Recall some principal
-    let (principal_returned, yield_returned) =
-        recall_principal(&env, &strategy_id, 500_000).unwrap();
+    let (principal_returned, yield_returned) = env
+        .as_contract(&vault_id, || recall_principal(&env, &strategy_id, 500_000))
+        .unwrap();
 
     assert_eq!(principal_returned, 500_000);
     assert_eq!(yield_returned, 0);
 
-    // Verify deployed principal decreased using public query
-    assert_eq!(client.get_yield_info().deployed_principal, 500_000);
-
-    // Verify event was emitted
+    // Checked before any further client call: `events().all()` only holds the
+    // most recent invocation's events.
     let filtered = env.events().all().filter_by_contract(&client.address);
     let events = filtered.events();
     assert_eq!(events.len(), 1, "YieldWithdrawnEvent must be published");
+
+    // Verify deployed principal decreased using public query
+    assert_eq!(client.get_yield_info().deployed_principal, 500_000);
 }
 
 #[test]
 fn test_recall_principal_rejects_zero_or_negative() {
-    let (env, client, _merchant, _vault_id, token) = setup_strategy_vault();
+    let (env, client, _merchant, vault_id, token) = setup_strategy_vault();
 
     let strategy_id = env.register(MockYieldStrategy, ());
     let strategy_client = MockYieldStrategyClient::new(&env, &strategy_id);
@@ -1085,17 +1085,17 @@ fn test_recall_principal_rejects_zero_or_negative() {
     client.deploy_to_yield(&1_000_000);
 
     // Try to recall zero
-    let result = recall_principal(&env, &strategy_id, 0);
+    let result = env.as_contract(&vault_id, || recall_principal(&env, &strategy_id, 0));
     assert_eq!(result, Err(Error::NothingToWithdraw));
 
     // Try to recall negative
-    let result = recall_principal(&env, &strategy_id, -100);
+    let result = env.as_contract(&vault_id, || recall_principal(&env, &strategy_id, -100));
     assert_eq!(result, Err(Error::NothingToWithdraw));
 }
 
 #[test]
 fn test_recall_principal_rejects_more_than_deployed() {
-    let (env, client, _merchant, _vault_id, token) = setup_strategy_vault();
+    let (env, client, _merchant, vault_id, token) = setup_strategy_vault();
 
     let strategy_id = env.register(MockYieldStrategy, ());
     let strategy_client = MockYieldStrategyClient::new(&env, &strategy_id);
@@ -1108,17 +1108,18 @@ fn test_recall_principal_rejects_more_than_deployed() {
     client.deploy_to_yield(&1_000_000);
 
     // Try to recall more than deployed
-    let result = recall_principal(&env, &strategy_id, 2_000_000);
+    let result = env.as_contract(&vault_id, || {
+        recall_principal(&env, &strategy_id, 2_000_000)
+    });
     assert_eq!(result, Err(Error::NothingToWithdraw));
 }
 
 #[test]
 fn test_recall_principal_rejects_insufficient_return() {
-    let (env, client, _merchant, _vault_id, token) = setup_strategy_vault();
+    let (env, client, _merchant, vault_id, _token) = setup_strategy_vault();
 
-    let strategy_id = env.register(MockYieldStrategy, ());
-    let strategy_client = MockYieldStrategyClient::new(&env, &strategy_id);
-    strategy_client.initialize(&token, &client.address);
+    // Reports the withdrawal as paid without transferring anything back.
+    let strategy_id = env.register(crate::strategy_tests::ShortchangingStrategy, ());
 
     client.approve_yield_strategy(&strategy_id);
     client.set_yield_strategy(&strategy_id);
@@ -1126,8 +1127,7 @@ fn test_recall_principal_rejects_insufficient_return() {
     client.set_max_deploy_ratio(&10_000);
     client.deploy_to_yield(&1_000_000);
 
-    // Don't fund the strategy - it will fail to return tokens
-    let result = recall_principal(&env, &strategy_id, 500_000);
+    let result = env.as_contract(&vault_id, || recall_principal(&env, &strategy_id, 500_000));
 
     assert_eq!(result, Err(Error::InsufficientFloat));
 }
